@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="One band a day. Leave the rest to luck." />
+    <meta name="theme-color" content="#ffffff" />
+    <meta property="og:title" content="Bandspotting" />
+    <meta property="og:description" content="One band a day. Leave the rest to luck." />
+    <meta property="og:url" content="https://newband4me.com/" />
+    <meta property="og:type" content="website" />
+    <link rel="canonical" href="https://newband4me.com/" />
+    <title>Bandspotting</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./script.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <a class="wordmark" href="/" aria-label="Bandspotting home">Bandspotting</a>
+    </header>
+
+    <main>
+      <div class="lucky-machine">
+        <svg
+          class="folder"
+          viewBox="0 0 112 88"
+          role="img"
+          aria-label="A folder full of bands"
+        >
+          <path d="M5 20h38l10 11h54v52H5z" />
+          <path d="M5 20V8h35l11 12" />
+        </svg>
+
+        <button id="lucky-button" type="button">
+          <span>I'm feeling lucky</span>
+          <span aria-hidden="true">↗</span>
+        </button>
+        <p id="status" aria-live="polite">One band. Every day. UTC.</p>
+      </div>
+    </main>
+
+    <footer>
+      <a
+        href="https://github.com/funkchi/repo"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="View Bandspotting on GitHub"
+      >GitHub</a>
+    </footer>
+  </body>
+</html>
