@@ -7,7 +7,11 @@ const scriptOnly = source.slice(0, source.indexOf("document.querySelector"));
 const context = {};
 
 vm.createContext(context);
-vm.runInContext(`${scriptOnly}\nthis.getDateKey = utcDateKey; this.getBand = bandOfTheDay;`, context);
+vm.runInContext(`${scriptOnly}\nthis.getBand = bandOfTheDay;`, context);
+
+function getDateKey(date) {
+  return [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()].join("-");
+}
 
 const sameUtcDay = [
   new Date("2026-06-18T00:00:00.000Z"),
@@ -16,7 +20,7 @@ const sameUtcDay = [
 ];
 
 assert.deepEqual(
-  sameUtcDay.map(context.getDateKey),
+  sameUtcDay.map(getDateKey),
   ["2026-6-18", "2026-6-18", "2026-6-18"]
 );
 assert.equal(new Set(sameUtcDay.map(context.getBand)).size, 1);
@@ -28,8 +32,8 @@ const eitherSideOfMidnight = [
 ];
 
 assert.notEqual(
-  context.getDateKey(eitherSideOfMidnight[0]),
-  context.getDateKey(eitherSideOfMidnight[1])
+  getDateKey(eitherSideOfMidnight[0]),
+  getDateKey(eitherSideOfMidnight[1])
 );
 assert.notEqual(
   context.getBand(eitherSideOfMidnight[0]),

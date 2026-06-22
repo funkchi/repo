@@ -28,10 +28,6 @@ const bands = [
   "https://yves-tumor.bandcamp.com"
 ];
 
-function utcDateKey(date = new Date()) {
-  return [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()].join("-");
-}
-
 function hashValue(value) {
   let hash = 2166136261;
 
@@ -47,7 +43,7 @@ function bandOfTheDay(date = new Date()) {
   const utcDayNumber = Math.floor(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86400000
   );
-  const rotation = hashValue("Bandspotting") % bands.length;
+  const rotation = hashValue("Newband4me") % bands.length;
 
   // Walk the shuffled crate from a stable offset. This keeps the pick global,
   // changes it exactly at UTC midnight, and prevents back-to-back repeats.
