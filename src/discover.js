@@ -13,8 +13,6 @@ import {
 
 const SALT = "Newband4me";
 const DISCOVER_URL = "https://bandcamp.com/api/discover/3/get_web?s=rand&p=1";
-const BAND_INFO_URL = (bandId) =>
-  `https://bandcamp.com/api/band/3/info?band_id=${bandId}`;
 const UA =
   "Mozilla/5.0 (compatible; newband4me/1.0; +https://newband4me.com)";
 const KV_TTL = 60 * 60 * 36; // 36h -- past UTC midnight so the pick is stable
@@ -45,28 +43,19 @@ function toOrigin(url) {
   }
 }
 
-// Resolve a discover item to a band origin URL. Tries direct URL fields first
-// (defensive -- the exact field is undocumented), then falls back to the
-// band_id -> /api/band/3/info lookup which returns the canonical band_url.
-async function resolveItemUrl(item) {
-  const direct = toOrigin(
-    item.band_url || item.url || item.link || item.page_url
+// Resolve a discover item to its canonical bandcamp.com URL. The discover
+// payload has no direct URL field -- it encodes the band's subdomain in
+// `url_hints`. Falls back to defensive direct fields if the shape changes.
+function resolveItemUrl(item) {
+  const subdomain = item && item.url_hints && item.url_hints.subdomain;
+
+  if (subdomain) {
+    return `https://${subdomain}.bandcamp.com`;
+  }
+
+  return toOrigin(
+    item && (item.band_url || item.url || item.link || item.page_url)
   );
-
-  if (direct) {
-    return direct;
-  }
-
-  if (item.band_id == null) {
-    return null;
-  }
-
-  try {
-    const info = await fetchJson(BAND_INFO_URL(item.band_id));
-    return toOrigin(info.band_url || info.url);
-  } catch {
-    return null;
-  }
 }
 
 // Generate the band for a date, using KV as the per-day cache. Throws on any
@@ -91,7 +80,7 @@ export async function generateBand(date, env) {
   const index = Math.floor(rng() * items.length);
   const item = items[index];
 
-  const url = await resolveItemUrl(item);
+  const url = resolveItemUrl(item);
 
   if (!url) {
     throw new Error("could not resolve band url");
