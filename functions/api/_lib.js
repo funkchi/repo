@@ -1,11 +1,16 @@
-import { parseUtcDate, isFutureDate, COMING_SOON } from "../../src/band.js";
+import {
+  parseUtcDate,
+  isFutureDate,
+  isTooFarPast,
+  COMING_SOON
+} from "../../src/band.js";
 import { generateBandOrFallback } from "../../src/discover.js";
 
 // Resolve the requested date and the band URL for it.
 // - Honors `?date=YYYY-MM-DD` (defaults to now, UTC).
-// - Returns { error } on a malformed date.
-// - Returns { date, url } where url is the Bandcamp page (generated live and
-//   frozen in KV), or COMING_SOON when the requested date is in the future.
+// - Returns { error } on a malformed or out-of-range date.
+// - Future dates -> COMING_SOON. Dates older than MAX_PAST_DAYS -> error.
+// - Otherwise { date, url } with the URL generated live and frozen in KV.
 export async function resolveBand(request, env) {
   const requestUrl = new URL(request.url);
   let date = new Date();
@@ -22,6 +27,10 @@ export async function resolveBand(request, env) {
 
   if (isFutureDate(date)) {
     return { date, url: COMING_SOON };
+  }
+
+  if (isTooFarPast(date)) {
+    return { error: "Date out of range. Only the last 14 days are available." };
   }
 
   const url = await generateBandOrFallback(date, env);

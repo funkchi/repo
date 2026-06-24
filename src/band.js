@@ -8,6 +8,12 @@ const SALT = "Newband4me";
 // Sentinel returned for date lookups that fall after today (UTC).
 export const COMING_SOON = "<coming-soon>";
 
+// How far back a ?date= lookup may go. Bounds the per-date cache-miss blast
+// radius (each distinct past date = one upstream fetch + one KV write) so an
+// attacker iterating dates can't exhaust the daily KV-write quota or hammer
+// Bandcamp. Today + this many past days are accepted.
+export const MAX_PAST_DAYS = 14;
+
 // Used only when the live discover fetch fails (Bandcamp down, blocked, or
 // changes shape). Keeps the button working no matter what.
 export const FALLBACK_BANDS = [
@@ -79,6 +85,11 @@ export function fallbackBand(date = new Date()) {
 // A date is "future" when its UTC day-number is strictly greater than now's.
 export function isFutureDate(date, now = new Date()) {
   return utcDayNumber(date) > utcDayNumber(now);
+}
+
+// A date is "too far past" when it's older than MAX_PAST_DAYS before today.
+export function isTooFarPast(date, now = new Date()) {
+  return utcDayNumber(date) < utcDayNumber(now) - MAX_PAST_DAYS;
 }
 
 // Parse a YYYY-MM-DD string as a UTC-midnight Date. Returns null if invalid.

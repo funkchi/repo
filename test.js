@@ -8,6 +8,8 @@ import {
   parseUtcDate,
   dateKey,
   isFutureDate,
+  isTooFarPast,
+  MAX_PAST_DAYS,
   COMING_SOON
 } from "./src/band.js";
 
@@ -69,6 +71,23 @@ test("isFutureDate flags only strictly-future UTC days", () => {
   assert.equal(isFutureDate(new Date(Date.UTC(2026, 5, 23)), now), false);
   assert.equal(isFutureDate(new Date(Date.UTC(2026, 5, 24)), now), true);
   assert.equal(isFutureDate(new Date(Date.UTC(2026, 5, 22)), now), false);
+});
+
+test("isTooFarPast enforces the MAX_PAST_DAYS window (inclusive boundary)", () => {
+  const now = new Date(Date.UTC(2026, 5, 23, 12, 0, 0));
+  const DAY = 86400000;
+
+  // boundary: exactly MAX_PAST_DAYS ago is still allowed (not too far)
+  const edge = new Date(now.getTime() - MAX_PAST_DAYS * DAY);
+  assert.equal(isTooFarPast(edge, now), false);
+
+  // one day older than the window is rejected
+  const tooOld = new Date(now.getTime() - (MAX_PAST_DAYS + 1) * DAY);
+  assert.equal(isTooFarPast(tooOld, now), true);
+
+  // today and yesterday are allowed
+  assert.equal(isTooFarPast(now, now), false);
+  assert.equal(isTooFarPast(new Date(now.getTime() - DAY), now), false);
 });
 
 test("COMING_SOON sentinel is stable and distinct from fallback URLs", () => {

@@ -49,8 +49,9 @@ needs the DNS record that points `newband4me.com` at `newband4me.pages.dev`.
 ## API
 
 All routes return today's band (UTC) and accept `?date=YYYY-MM-DD` to look up
-any other day. Responses are CORS-enabled (`Access-Control-Allow-Origin: *`).
-Future dates return the sentinel `<coming-soon>` instead of a URL.
+another day. Responses are CORS-enabled (`Access-Control-Allow-Origin: *`).
+Future dates return the sentinel `<coming-soon>`; dates older than the last
+14 days return `400 Date out of range` (bounds per-date upstream cost).
 
 > **Always include the `https://` scheme with curl.** Cloudflare redirects
 > plain `http://` (or a bare `newband4me.com/...`) to HTTPS with a `301`, so a
@@ -78,3 +79,21 @@ curl -s https://newband4me.com/api/band | jq
 # open today's band directly
 curl -sL -o /dev/null -w '%{redirect_url}\n' https://newband4me.com/api/redirect
 ```
+
+## Abuse limits
+
+Two layers keep a `curl`-loop from exhausting the daily KV-write quota or
+getting the site blocked by Bandcamp:
+
+1. **Date window (code).** `?date=` is accepted only for today and the previous
+   `MAX_PAST_DAYS` (14) days; anything older returns `400`. This caps the
+   per-date cache-miss blast radius at 15 upstream fetches total, regardless of
+   how many distinct dates a client requests.
+2. **Rate limiting (Cloudflare).** In the dashboard, **Security → WAF → Rate
+   limiting rules → Create rule**, e.g.:
+   - **If:** `URI Path starts with /api/`
+   - **Counting characteristics:** IP address
+   - **Period:** 10 seconds · **Requests:** 30
+   - **Then:** Block for 60 seconds
+
+   Tune the threshold to taste. Free tier includes rate-limiting rules.

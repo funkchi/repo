@@ -59,8 +59,8 @@ button {
   min-width: 250px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 28px;
+  justify-content: center;
+  gap: 10px;
   border: 1.5px solid #0a0a0a;
   border-radius: 0;
   padding: 17px 19px;
