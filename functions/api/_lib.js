@@ -42,6 +42,17 @@ export const corsHeaders = {
   "access-control-allow-origin": "*"
 };
 
+export function plainText(text, status = 200, options = {}) {
+  return new Response(text + "\n", {
+    status,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      ...corsHeaders,
+      "cache-control": options.cacheControl || (status === 200 ? "public, max-age=300" : "no-store")
+    }
+  });
+}
+
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,

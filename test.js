@@ -12,6 +12,7 @@ import {
   MAX_PAST_DAYS,
   COMING_SOON
 } from "./src/band.js";
+import { onRequestGet as rootGet } from "./functions/index.js";
 
 const URL_SHAPE = /^https:\/\/[a-z0-9-]+\.bandcamp\.com$/;
 
@@ -93,4 +94,59 @@ test("isTooFarPast enforces the MAX_PAST_DAYS window (inclusive boundary)", () =
 test("COMING_SOON sentinel is stable and distinct from fallback URLs", () => {
   assert.equal(COMING_SOON, "<coming-soon>");
   assert.ok(!FALLBACK_BANDS.includes(COMING_SOON));
+});
+
+test("root route returns the Cloudflare client IP for curl", async () => {
+  const response = await rootGet({
+    request: new Request("https://newband4me.com/", {
+      headers: {
+        accept: "*/*",
+        "user-agent": "curl/8.7.1",
+        "cf-connecting-ip": "203.0.113.42"
+      }
+    }),
+    next() {
+      throw new Error("curl requests should not fall through to static HTML");
+    }
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "203.0.113.42\n");
+  assert.match(response.headers.get("content-type"), /^text\/plain/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});
+
+test("root route falls back to x-forwarded-for when Cloudflare IP header is unavailable", async () => {
+  const response = await rootGet({
+    request: new Request("https://newband4me.com/", {
+      headers: {
+        "user-agent": "curl/8.7.1",
+        "x-forwarded-for": "198.51.100.9, 198.51.100.10"
+      }
+    }),
+    next() {
+      throw new Error("curl requests should not fall through to static HTML");
+    }
+  });
+
+  assert.equal(await response.text(), "198.51.100.9\n");
+});
+
+test("root route lets normal browser navigation render the static site", async () => {
+  let passedThrough = false;
+  const response = await rootGet({
+    request: new Request("https://newband4me.com/", {
+      headers: {
+        accept: "text/html,application/xhtml+xml",
+        "user-agent": "Mozilla/5.0"
+      }
+    }),
+    next() {
+      passedThrough = true;
+      return new Response("<!doctype html>");
+    }
+  });
+
+  assert.equal(passedThrough, true);
+  assert.equal(await response.text(), "<!doctype html>");
 });

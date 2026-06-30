@@ -22,11 +22,12 @@ playlist, no database to maintain.
 ```
 Browser                 Edge (Pages Functions)            Upstream
 ───────                 ───────────────────────           ────────
-index.html ─┐                              /api/band ─┐
-styles.css  │  static assets               /api/...  │  fetch
-script.js ──┤  (served directly)        →  resolve   │  Bandcamp
-            │                              date      │  discover
-            │                              ↓         │  (s=rand)
+curl / ───────────────────────────────>  client IP
+index.html ─┐
+styles.css  │  static assets              /api/...  ─┐ fetch
+script.js ──┤  (served directly)       →  resolve   │ Bandcamp
+            │                              date      │ discover
+            │                              ↓         │ (s=rand)
             │                           KV (cache)   │
 button click ────> /api/redirect ──> resolve ──> 302  │
 ```
@@ -51,10 +52,11 @@ src/
   band.js               # PURE helpers: hashing, dates, fallback list. Testable.
   discover.js           # SERVER-ONLY: fetch Bandcamp, pick, cache in KV.
 functions/api/
-  _lib.js               # shared: resolve date + band, CORS, JSON helper
+  _lib.js               # shared: resolve date + band, CORS, response helpers
   band.js               # GET /api/band      → JSON { date, url }
   band.txt.js           # GET /api/band.txt  → plain text
   redirect.js           # GET /api/redirect  → 302 to the band page
+functions/index.js      # GET / from curl    → client IP, browsers → index.html
 test.js                 # node:test unit tests for the pure logic
 _headers                # security headers + long cache for /assets/*
 package.json            # { "type": "module" } so tests can use ESM
@@ -128,15 +130,20 @@ KV via `env.BANDS_KV`. `generateBandOrFallback(date, env)` wraps it in a
 Pages Functions map files to routes. `_lib.js` exports a shared `resolveBand`
 asynchronous resolver that does, in order: parse `?date=` → reject malformed →
 future dates become `COMING_SOON` → too-old dates error → otherwise ask the
-generator. Three thin route files format that one result:
+generator. The root Function special-cases command-line clients so
+`curl newband4me.com` behaves like a tiny `ifconfig.me`, while normal browser
+navigation falls through to `index.html`.
 
 | Route | Returns |
 | --- | --- |
+| `functions/index.js`        | `GET /` from curl   → `200` client IP |
 | `functions/api/band.js`     | `GET /api/band`     → `200` JSON `{ date, url }` |
 | `functions/api/band.txt.js` | `GET /api/band.txt` → `200` text/plain |
 | `functions/api/redirect.js` | `GET /api/redirect` → `302` to the band page |
 
-All send `Access-Control-Allow-Origin: *` and honor `?date=YYYY-MM-DD`.
+The band routes send `Access-Control-Allow-Origin: *` and honor
+`?date=YYYY-MM-DD`. The root IP response is `text/plain` with `Cache-Control:
+no-store`.
 
 ### 5 — Test the pure logic
 
@@ -179,26 +186,30 @@ Cloudflare needs the DNS record pointing it at `<project>.pages.dev`.
 
 ## API reference
 
-All routes return today's band (UTC) and accept `?date=YYYY-MM-DD` to look up
-another day. Future dates return the sentinel `<coming-soon>`; dates older than
-the last 14 days return `400 Date out of range` (this bounds upstream cost —
-see *Limitations*).
+The root route returns the requester IP for CLI clients and the static app for
+normal browsers. The `/api/*` routes return today's band (UTC) and accept
+`?date=YYYY-MM-DD` to look up another day. Future dates return the sentinel
+`<coming-soon>`; dates older than the last 14 days return `400 Date out of
+range` (this bounds upstream cost — see *Limitations*).
 
 | Route | Response | Example |
 | --- | --- | --- |
+| `GET /` | client IP for curl; static site for browsers | `curl -L newband4me.com` |
 | `GET /api/band` | JSON `{ date, url }` | `curl https://newband4me.com/api/band` |
 | `GET /api/band.txt` | plain-text URL | `curl https://newband4me.com/api/band.txt` |
 | `GET /api/redirect` | `302` to the Bandcamp page | `curl -sL https://newband4me.com/api/redirect` |
 
 ```sh
-curl -s https://newband4me.com/api/band.txt                     # today's band
-curl -s 'https://newband4me.com/api/band.txt?date=2026-07-04'   # a specific day
-curl -s https://newband4me.com/api/band | jq                    # JSON
+curl -sL newband4me.com                                          # your IP
+curl -s https://newband4me.com/api/band.txt                      # today's band
+curl -s 'https://newband4me.com/api/band.txt?date=2026-06-29'    # a specific day
+curl -s https://newband4me.com/api/band | jq                     # JSON
 ```
 
-> **Always include the `https://` scheme with curl.** Cloudflare redirects plain
-> `http://` (or a bare hostname) to HTTPS with a `301`, so a schemeless URL just
-> prints the redirect. Use `https://` or pass `-L`.
+> If Cloudflare's **Always Use HTTPS** redirect is enabled, a bare
+> `curl newband4me.com` still prints Cloudflare's `301` before this Function can
+> run. Use `curl -L newband4me.com`, include `https://`, or disable that redirect
+> if you want plain HTTP requests to return the IP directly.
 
 ## Customization
 
